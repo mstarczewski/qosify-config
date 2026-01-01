@@ -109,7 +109,7 @@ config class 'browsing'
 	option prio_max_avg_pkt_len '300'
 	option bulk_trigger_pps '3500'         
 	option bulk_trigger_timeout '5'      
-	option dscp_bulk 'CS1'                # Degraduj do CS1 (Tin 1)
+	option dscp_bulk 'CS1'
 
 config class 'besteffort'
 	option ingress 'CS0'
