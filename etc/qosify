@@ -1,0 +1,191 @@
+#####################################################################################################################################
+# qosify diffserv8 mapping (8-tin mode) - Verified against User Config & Cisco:
+#
+# Tin | Class Name          | Priority | Purpose / Traffic Type          | Traffic Type (Standard Definition)        | DSCP Mapping
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 0   | background          | 1 (Low)  | Pure Background / Scavenger     | Lower Effort (RFC 8622)                   | LE (1)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 1   | bulk                | 2        | High Throughput / Bulk Data     | Class Selector 1 (Priority)               | CS1 (8)
+# 1   | *(NOT USED)         | 2        | *(NOT USED)                     | Assured Forwarding 11 (Low Drop)          | AF11 (10)
+# 1   | *(NOT USED)         | 2        | *(NOT USED)                     | Assured Forwarding 12 (Medium Drop)       | AF12 (12)
+# 1   | *(NOT USED)         | 2        | *(NOT USED)                     | Assured Forwarding 13 (High Drop)         | AF13 (14)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 2   | besteffort/browsing | 3        | Standard Internet Traffic (DF)  | Default Forwarding / Best Effort          | CS0/DF (0)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Class Selector 3 (Broadcast Video)        | CS3 (24)
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 31 (Low Drop)          | AF31 (26)
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 32 (Medium Drop)       | AF32 (28)
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 33 (High Drop)         | AF33 (30)
+# 3   | video               | 4        | Video Streaming                 | Assured Forwarding 41 (Low Drop)          | AF41 (34)
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 42 (Medium Drop)       | AF42 (36)
+# 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 43 (High Drop)         | AF43 (38)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 4   | voice               | 5        | Interactive Video/Audio (Teams) | Assured Forwarding 21 (Low Drop)          | AF21 (18)
+# 4   | *(NOT USED)         | 5        | *(NOT USED)                     | Assured Forwarding 22 (Medium Drop)       | AF22 (20)
+# 4   | *(NOT USED)         | 5        | *(NOT USED)                     | Assured Forwarding 23 (High Drop)         | AF23 (22)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 5   | network_services    | 6        | DNS, ICMP (Ping), NTP, Routing  | Class Selector 2 (OAM)                    | CS2 (16)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 6   | gaming              | 7        | High Priority Data, Games       | Class Selector 4 (Real-Time Interactive)  | CS4 (32)
+# 6   | *(NOT USED)         | 7        | *(NOT USED)                     | Class Selector 5 (Signaling)              | CS5 (40)
+# 6   | *(NOT USED)         | 7        | *(NOT USED)                     | Voice Admit (Call Admission Control)      | VA (44)
+# 6   | *(NOT USED)         | 7        | *(NOT USED)                     | Expedited Forwarding (Premium VoIP)       | EF (46)
+# ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
+# 7   | *(NOT USED)         | 8 (High) | *(NOT USED)                     | Class Selector 6 (Network Control)        | CS6 (48)
+# 7   | telephony           | 8 (High) | Critical Control, Voice Sign.   | Class Selector 7 (Reserved)               | CS7 (56)
+#####################################################################################################################################
+#
+# Notes:
+# - DF (Default Forwarding) = CS0 (0)
+# - *(NOT USED) indicates DSCP values mapped to this tin but not actively used in config
+# - Purpose column shows actual usage in your configuration
+# - Traffic Type column shows standard RFC/IEEE definitions
+# - AFxy format: x=class (1-4), y=drop probability (1=Low, 2=Medium, 3=High)
+# - CS (Class Selector) values map to legacy IP Precedence
+# - EF (Expedited Forwarding) - RFC 3246: Low loss, latency, jitter for premium services
+# - VA (Voice Admit) - RFC 5865: Capacity-admitted voice traffic
+# - LE (Lower Effort) - RFC 8622: Less than best effort traffic
+# - Lower tin number = lower priority (Tin 0 = lowest, Tin 7 = highest)
+# - CAKE processes from highest tin (7) to lowest tin (0) during congestion
+#####################################################################################################################################
+
+#==============================================================================
+# BANDWIDTH vs PPS — GUIDE FOR SELECTING bulk_trigger_pps
+# (at MTU ~1500 B; PPPoE: ~1492 B payload)
+# ==============================================================================
+# Bandwidth        | Approximate PPS (full MTU) | Approximate PPS (~1200 B/pkt)
+# -----------------|----------------------------|------------------------------
+# 10 Mbit/s        | ~850 PPS                   | ~1100 PPS
+# 50 Mbit/s        | ~4200 PPS                  | ~5400 PPS
+# 100 Mbit/s       | ~8400 PPS                  | ~10800 PPS
+# 150 Mbit/s       | ~12600 PPS                 | ~16200 PPS
+# 300 Mbit/s       | ~25200 PPS                 | ~32400 PPS
+# ==============================================================================
+# ==============================================================================
+# prio_max_avg_pkt_len — VALUE INTERPRETATION
+# Determines whether a flow can be treated as HIGH-PRIORITY (low latency).
+# Flows with average packet size ≤ this value = eligible for priority class.
+# ==============================================================================
+# Value (bytes)   | What typically gets priority treatment?     | Recommended for
+# ----------------|---------------------------------------------|------------------------
+# 128–200         | VoIP, ICMP echo, DNS, FPS gaming only       | Links < 20 Mbit/s, VoIP-critical
+# 256–400         | VoIP, gaming, WebRTC, SSH, small TCP ACKs   | RESIDENTIAL 50–500 Mbit/s (recommended)
+# 500–700         | Above + light browsing, email sync          | When bulk is manually controlled
+# >1000           | YouTube, APT, Steam downloads → PRIORITY   	| Avoid – defeats QoS purpose
+# ==============================================================================
+
+config defaults
+	list defaults '/etc/qosify/*.conf'
+	option dscp_default_tcp '+besteffort'  # CS0 → Tin 2
+	option dscp_default_udp '+besteffort'  # CS0 → Tin 2
+	#option dscp_prio 'video'	       # AF41 → Tin 3 
+	option dscp_icmp '+network_services'   # CS2 → Tin 5
+	#option prio_max_avg_pkt_len '500'
+
+# ==============================================================================
+# Tin 0 - BACKGROUND (LE)
+# ==============================================================================
+config class 'background'
+	option ingress 'LE'
+	option egress 'LE'
+
+# ==============================================================================
+# Tin 1 - HIGH THROUGHPUT (CS1, AF11-13)
+# ==============================================================================
+config class 'bulk'
+	option ingress 'CS1'
+	option egress 'CS1'
+	option bulk_trigger_pps '10000'        
+	option bulk_trigger_timeout '5'
+	option dscp_bulk 'LE'                 
+
+# ==============================================================================
+# Tin 2 - BEST EFFORT (CS0) - WWW i nieznany ruch
+# ==============================================================================
+config class 'browsing'
+	option ingress 'CS0'
+	option egress 'CS0'
+	option dscp_prio 'AF41'	              
+	option prio_max_avg_pkt_len '300'
+	option bulk_trigger_pps '3500'         
+	option bulk_trigger_timeout '5'      
+	option dscp_bulk 'CS1'                # Degraduj do CS1 (Tin 1)
+
+config class 'besteffort'
+	option ingress 'CS0'
+	option egress 'CS0'
+	#option dscp_prio 'AF41'               
+	#option prio_max_avg_pkt_len '600'
+	option bulk_trigger_pps '5000'
+	option bulk_trigger_timeout '5'
+	option dscp_bulk 'LE'
+
+# ==============================================================================
+# Tin 3 - VIDEO STREAMING (CS3, AF41-43)
+# ==============================================================================
+config class 'video'
+	option ingress 'AF41'	
+	option egress 'AF41'
+	option bulk_trigger_pps '5000'
+	option bulk_trigger_timeout '10'
+	option dscp_bulk 'CS1'
+
+# ==============================================================================
+# Tin 4 - VOICE (AF21-23)
+# ==============================================================================
+config class 'voice'
+	option ingress 'AF21'
+	option egress 'AF21'
+	option bulk_trigger_pps '200'
+	option bulk_trigger_timeout '5'
+	option dscp_bulk 'CS1'
+
+# ==============================================================================
+# Tin 5 - NETWORK SERVICES (CS2) 
+# ==============================================================================
+config class 'network_services'
+	option ingress 'CS2'
+	option egress 'CS2'
+	option bulk_trigger_pps '200'    
+	option bulk_trigger_timeout '10'
+	option dscp_bulk 'CS1'
+
+# ==============================================================================
+# Tin 6 - MINIMUM LATENCY (CS4,CS5,EF) - Gaming
+# ==============================================================================
+config class 'gaming'
+	option ingress 'CS4'
+	option egress 'CS4'			
+	option bulk_trigger_pps '600'
+	option bulk_trigger_timeout '5'
+	option dscp_bulk 'CS1'
+
+# ==============================================================================
+# Tin 7 - TELEPHONY (CS6,CS7)
+# ==============================================================================
+config class 'telephony'
+	option ingress 'CS7'
+	option egress 'CS7'			
+	option bulk_trigger_pps '200'
+	option bulk_trigger_timeout '5'
+	option dscp_bulk 'CS1'
+
+# ==============================================================================
+# WAN Interface
+# ==============================================================================
+config interface 'wan'
+	option name 'wan'
+	option disabled '0'
+	option bandwidth_up '158mbit'
+	option bandwidth_down '320mbit'
+	option overhead_type 'manual'
+	option overhead_bytes '38' #'44'
+	option ingress '1'
+	option egress '1'
+	option mode 'diffserv8'
+	option nat '1'
+	option host_isolate '1'
+	option autorate_ingress '0'
+	option egress_options 'wash'
+#	option ingress_options 'wash'
+
