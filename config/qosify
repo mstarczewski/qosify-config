@@ -1,5 +1,5 @@
 #####################################################################################################################################
-# qosify diffserv8 mapping (8-tin mode) - Verified against User Config & Cisco:
+# qosify diffserv8 mapping (8-tin mode):
 #
 # Tin | Class Name          | Priority | Purpose / Traffic Type          | Traffic Type (Standard Definition)        | DSCP Mapping
 # ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
@@ -10,7 +10,7 @@
 # 1   | *(NOT USED)         | 2        | *(NOT USED)                     | Assured Forwarding 12 (Medium Drop)       | AF12 (12)
 # 1   | *(NOT USED)         | 2        | *(NOT USED)                     | Assured Forwarding 13 (High Drop)         | AF13 (14)
 # ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
-# 2   | besteffort/browsing | 3        | Standard Internet Traffic (DF)  | Default Forwarding / Best Effort          | CS0/DF (0)
+# 2   | besteffort/browsing | 3        | Standard Internet Traffic (DF)  | Default Forwarding / Best Effort          | CS0 (0)
 # ----+---------------------+----------+---------------------------------+-------------------------------------------+---------------
 # 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Class Selector 3 (Broadcast Video)        | CS3 (24)
 # 3   | *(NOT USED)         | 4        | *(NOT USED)                     | Assured Forwarding 31 (Low Drop)          | AF31 (26)
